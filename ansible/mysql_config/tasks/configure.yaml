@@ -1,0 +1,87 @@
+
+---
+
+- name: 'MySQL | Configure properties in global config file.'
+  become: yes
+  ini_file:
+    dest: '{{ mysql_global_config_file }}'
+    section: '{{ item.section }}'
+    option: '{{ item.option | default(omit) }}'
+    value: '{{ item.value | default(omit) }}'
+    state: '{{ item.state | default(omit) }}'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  notify: 'restart mysql'
+  with_items: '{{ mysql_global_config }}'
+  when: 'mysql_global_config | default(None) != None'
+
+- name: 'MySQL | Set ownership of directories.'
+  become: yes
+  file:
+    path: '{{ item }}'
+    state: 'directory'
+    owner: 'mysql'
+    group: 'mysql'
+    mode: '0755'
+  with_items:
+    - '{{ mysql_pid_path }}'
+    - '{{ mysql_log_path }}'
+  when: 'ansible_os_family == "RedHat"'
+
+- name: 'MySQL | Ensure MySQL is started.'
+  become: yes
+  service:
+    name: '{{ mysql_service_name }}'
+    state: 'started'
+
+- name: 'MySQL | Retrieve the root user hosts.'
+  become: yes
+  shell: 'mysql -NBe ''SELECT Host FROM mysql.user WHERE User = "{{ mysql_root_username }}" ORDER BY (host="localhost") ASC'''
+  environment:
+    HOME: '/root'
+  register: 'mysql_root_hosts'
+  changed_when: false
+  check_mode: no
+  when: 'mysql_update_root_password or mysql_debian_installed_packages.changed == true or mysql_redhat_installed_packages.changed == true'
+
+- name: 'MySQL | Retrieve the anonymous user hosts.'
+  become: yes
+  shell: 'mysql -NBe ''SELECT Host FROM mysql.user WHERE User = ""'''
+  environment:
+    HOME: '/root'
+  register: 'mysql_anonymous_hosts'
+  changed_when: false
+  check_mode: no
+
+- name: 'MySQL | Update the root user password.'
+  become: yes
+  shell: 'mysql -NBe ''SET PASSWORD FOR "{{ mysql_root_username }}"@"{{ item }}" = PASSWORD("{{ mysql_root_password }}");'''
+  environment:
+    HOME: '/root'
+  ignore_errors: yes
+  register: 'mysql_update_root_password_result'
+  with_items: '{{ mysql_root_hosts.stdout_lines | default([]) }}'
+
+
+
+
+- name: 'MySQL | Configure users.'
+  become: yes
+  mysql_user:
+    config_file: '{{ item.config_file | default(omit) }}'
+    connect_timeout: '{{ item.connect_timeout | default(omit) }}'
+    encrypted: '{{ item.encrypted | default(omit) }}'
+    host: '{{ item.host | default(omit) }}'
+    host_all: '{{ item.host_all | default(omit) }}'
+    login_host: '{{ item.login_host | default(omit) }}'
+    login_password: '{{ item.login_password | default(mysql_root_password) }}'
+    login_port: '{{ item.login_port | default(omit) }}'
+    login_user: '{{ item.login_user | default(mysql_root_username) }}'
+    name: '{{ item.name }}'
+    password: '{{ item.password | default(omit) }}'
+    priv: '{{ item.priv | default("*.*:USAGE") }}'
+    state: '{{ item.state | default(omit) }}'
+    update_password: '{{ item.update_password | default(omit) }}'
+  with_items: '{{ mysql_users }}'
+  when: 'mysql_users | default(None) != None'

@@ -1,0 +1,58 @@
+---
+
+- name: 'MySQL | Define MySQL service name.'
+  set_fact:
+    mysql_service_name: '{{ mysql_default_service_name }}'
+  when: 'not mysql_service_name'
+  tags:
+    - 'mysql'
+    - 'mysql-package'
+    - 'mysql-configure'
+    - 'mysql-service'
+    - 'package'
+    - 'configure'
+    - 'service'
+
+- name: 'MySQL | Define MySQL packages.'
+  set_fact:
+    mysql_packages: '{{ mysql_default_packages }}'
+  when: 'not mysql_packages'
+  tags:
+    - 'mysql'
+    - 'mysql-package'
+    - 'mysql-configure'
+    - 'mysql-service'
+    - 'package'
+    - 'configure'
+    - 'service'
+
+- name: 'MySQL | Define whether MySQL is installed.'
+  stat:
+    path: '/etc/init.d/mysql'
+  register: 'mysql_installed'
+  tags:
+    - 'mysql'
+    - 'mysql-package'
+    - 'mysql-configure'
+    - 'mysql-service'
+    - 'package'
+    - 'configure'
+    - 'service'
+
+- import_tasks: 'package.yml'
+  tags:
+    - 'mysql'
+    - 'mysql-package'
+    - 'package'
+
+- import_tasks: 'configure.yml'
+  tags:
+    - 'mysql'
+    - 'mysql-configure'
+    - 'configure'
+
+- import_tasks: 'service.yml'
+  tags:
+    - 'mysql'
+    - 'mysql-service'
+    - 'service'

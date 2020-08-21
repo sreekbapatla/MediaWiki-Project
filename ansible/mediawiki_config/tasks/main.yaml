@@ -1,0 +1,65 @@
+---
+- name: Install dependencies
+  yum: name={{ item }} state=present
+  with_items:
+    - httpd
+    - php
+    - php-mysql
+    - wget
+
+- name: Download MediaWiki artifacts
+  get_url:
+    url: http://releases.wikimedia.org/mediawiki/1.24/mediawiki-1.24.1.tar.gz
+    dest: /tmp/mediawiki.tgz
+
+- name: unzip MediaWiki tar file
+  unarchive:
+    src: /tmp/mediawiki.tgz
+    dest: /tmp
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+
+- name: move MediaWiki files to web directory ath
+  command: creates={{ wiki.install_path }} mv /tmp/mediawiki-1.24.1/ {{ wiki.install_path }}
+
+- name: set up mediawiki conf file
+  template:
+    src: wiki.conf.j2
+    dest: /etc/httpd/conf.d/wiki.conf
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+    mode: 0664
+
+- name: Configure MediaWiki
+  template:
+    src: LocalSettings.php.j2
+    dest: "{{ wiki.install_path }}/LocalSettings.php"
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+    mode: 0644
+
+- name: Copy mediawiki logo image file
+  copy:
+    src: "{{ wiki.logo.source_path }}"
+    dest: "{{ wiki.install_path }}/{{ wiki.logo.path }}"
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+    mode: 0644
+  when: wiki.logo.copy_custom_file
+
+- name: update permissions for MediaWiki directory
+  file:
+    path: "{{ wiki.install_path }}/.."
+    state: directory
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+    mode: 0775
+
+- name: Update permissions for MediaWiki installation
+  file:
+    path: "{{ wiki.install_path }}"
+    state: directory
+    recurse: yes
+    owner: "{{ wiki.user }}"
+    group: "{{ wiki.user }}"
+    mode: 0775

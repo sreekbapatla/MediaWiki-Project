@@ -1,0 +1,35 @@
+---
+
+- name: 'MySQL | Add  repository.'
+  become: yes
+  template:
+    src: 'yum.repo.j2'
+    dest: '/etc/yum.repos.d/{{ mysql_repo_uid }}.repo'
+    owner: 'root'
+    group: 'root'
+    mode: '0644'
+  register: 'mysql_repo_added'
+  when: 'ansible_os_family == "RedHat" and mysql_repo_state | default("present") == "present"'
+
+- name: 'MySQL | RedHat | Install MySQL Python package.'
+  become: yes
+  yum:
+    name: 'MySQL-python'
+    state: 'present'
+  when: 'ansible_os_family == "RedHat"'
+
+- name: 'MySQL | RedHat | Install MySQL packages.'
+  become: yes
+  yum:
+    name: '{{ item.name if item.version is not defined else item.name + "-" + item.version }}'
+    conf_file: '{{ item.conf_file | default(omit) }}'
+    disable_gpg_check: '{{ item.disable_gpg_check | default(omit) }}'
+    disablerepo: '{{ item.disablerepo | default(omit) }}'
+    enablerepo: '{{ item.enablerepo | default(omit) }}'
+    exclude: '{{ item.exclude | default(omit) }}'
+    list: '{{ item.list | default(omit) }}'
+    state: '{{ item.state | default(omit) }}'
+    update_cache: '{{ mysql_repo_removed.changed or mysql_repo_added.changed or item.update_cache | default(omit) }}'
+  register: 'mysql_redhat_installed_packages'
+  with_items: '{{ mysql_packages }}'
+  when: 'ansible_os_family == "RedHat"'

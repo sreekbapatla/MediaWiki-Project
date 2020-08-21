@@ -1,0 +1,8 @@
+---
+
+- name: 'MySQL | Enable MySQL service.'
+  become: yes
+  service:
+    name: '{{ mysql_service_name }}'
+    state: '{{ mysql_service_state }}'
+    enabled: '{{ mysql_service_enabled }}'
